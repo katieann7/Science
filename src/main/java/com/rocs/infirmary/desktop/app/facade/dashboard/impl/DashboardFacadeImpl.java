@@ -9,6 +9,7 @@ import com.rocs.infirmary.desktop.data.model.report.visit.FrequentVisitReport;
 import com.rocs.infirmary.desktop.data.model.report.medication.MedicationTrendReport;
 
 
+
 import java.util.Date;
 import java.util.List;
 
