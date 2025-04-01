@@ -1,4 +1,4 @@
-name: Semantic Release
+name: Build and Release
 
 on:
   workflow_run:
@@ -11,42 +11,34 @@ jobs:
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout Repository
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
           token: ${{ secrets.GH_TOKEN }}
 
-      - name: Set up JDK
+      - name: Set up Java
         uses: actions/setup-java@v4
         with:
           java-version: '11'
           distribution: 'temurin'
 
-      - name: Setup semantic-release
-        run: |
-          npm install -g semantic-release @semantic-release/git @semantic-release/changelog
+      - name: Install Apache Ant
+        run: sudo apt-get install -y ant
 
-      - name: Determine next version
-        id: semantic
+      - name: Set Release Version in `build.xml`
         run: |
-          npx semantic-release
-          echo "NEW_VERSION=$(npx semantic-release | grep 'The next release version is' | sed 's/.*is //')" >> $GITHUB_ENV
+          ant update-version -Dnew.version="1.0.${{ github.run_number }}"
 
-      - name: Update version in build.properties
-        if: env.NEW_VERSION != ''
-        run: |
-          ant update-version -Dnew.version=${{ env.NEW_VERSION }}
-
-      - name: Update version in build.xml
-        if: env.NEW_VERSION != ''
-        run: |
-          sed -i "s/<property name=\"version\" value=\".*\"\/>/<property name=\"version\" value=\"$NEW_VERSION\"\/>/g" build.xml
-
-      - name: Build release artifacts
+      - name: Build Project with Ant
         run: ant -noinput -buildfile build.xml release
 
-      - name: Release
-        if: env.NEW_VERSION != ''
+      - name: Publish Release (GitHub)
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
-        run: npx semantic-release
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "github-actions@github.com"
+          git commit -am "Release: 1.0.${{ github.run_number }}"
+          git tag "v1.0.${{ github.run_number }}"
+          git push origin master --tags
